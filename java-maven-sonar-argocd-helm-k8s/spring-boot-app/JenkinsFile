@@ -1,45 +1,25 @@
 pipeline {
-  agent any
-  options {
-    skipDefaultCheckout(true)
+  agent {
+    docker {
+      image 'abhishekf5/maven-abhishek-docker-agent:v1'
+      args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
+    }
   }
   stages {
     stage('Checkout') {
       steps {
-        deleteDir()
-        checkout scm
+        sh 'echo passed'
         //git branch: 'main', url: 'https://github.com/iam-veeramalla/Jenkins-Zero-To-Hero.git'
       }
     }
     stage('Build and Test') {
-      agent {
-        docker {
-          image 'abhishekf5/maven-abhishek-docker-agent:v1'
-          args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
-          reuseNode true
-        }
-      }
       steps {
+        sh 'ls -ltr'
         // build the project and create a JAR file
         sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
       }
-      post {
-        always {
-          sh '''
-            WORKSPACE_OWNER="$(stat -c '%u:%g' "$WORKSPACE")"
-            chown -R "$WORKSPACE_OWNER" "$WORKSPACE" || true
-          '''
-        }
-      }
     }
     stage('Static Code Analysis') {
-      agent {
-        docker {
-          image 'abhishekf5/maven-abhishek-docker-agent:v1'
-          args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
-          reuseNode true
-        }
-      }
       environment {
         SONAR_URL = "http://3.7.71.202:9000"
       }
@@ -48,23 +28,8 @@ pipeline {
           sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
         }
       }
-      post {
-        always {
-          sh '''
-            WORKSPACE_OWNER="$(stat -c '%u:%g' "$WORKSPACE")"
-            chown -R "$WORKSPACE_OWNER" "$WORKSPACE" || true
-          '''
-        }
-      }
     }
     stage('Build and Push Docker Image') {
-      agent {
-        docker {
-          image 'abhishekf5/maven-abhishek-docker-agent:v1'
-          args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
-          reuseNode true
-        }
-      }
       environment {
         DOCKER_IMAGE = "naveenreddy9/spring-boot-app:${BUILD_NUMBER}"
         // DOCKERFILE_LOCATION = "java-maven-sonar-argocd-helm-k8s/spring-boot-app/Dockerfile"
@@ -79,14 +44,6 @@ pipeline {
             }
         }
       }
-      post {
-        always {
-          sh '''
-            WORKSPACE_OWNER="$(stat -c '%u:%g' "$WORKSPACE")"
-            chown -R "$WORKSPACE_OWNER" "$WORKSPACE" || true
-          '''
-        }
-      }
     }
     stage('Update Deployment File') {
         environment {
@@ -96,8 +53,8 @@ pipeline {
         steps {
             withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                 sh '''
-                    git config user.email "abhishek.xyz@gmail.com"
-                    git config user.name "Abhishek Veeramalla"
+                    git config user.email "yaparla999@gmail.com"
+                    git config user.name "Naveen Reddy"
                     BUILD_NUMBER=${BUILD_NUMBER}
                     sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
                     git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
@@ -106,6 +63,15 @@ pipeline {
                 '''
             }
         }
+    }
+  }
+  post {
+    always {
+      sh '''
+        WORKSPACE_OWNER="$(stat -c '%u:%g' "$WORKSPACE")"
+        chown -R "$WORKSPACE_OWNER" "$WORKSPACE" || true
+        chown -R "$WORKSPACE_OWNER" "$WORKSPACE@tmp" || true
+      '''
     }
   }
 }
