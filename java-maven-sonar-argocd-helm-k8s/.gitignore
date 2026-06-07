@@ -1,0 +1,28 @@
+# Java build output
+target/
+*.jar
+
+# Maven
+.mvn/
+/.settings/
+
+# IDEs
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files and secrets
+.env
+*.env
+secrets/
+*.key
+*.pem
+
+# Logs
+.log
+
+# Other
+node_modules/

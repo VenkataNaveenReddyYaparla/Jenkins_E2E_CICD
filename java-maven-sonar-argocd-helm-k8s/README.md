@@ -1,82 +1,411 @@
-# Jenkins Pipeline for Java based application using Maven, SonarQube, Argo CD, Helm and Kubernetes
+# End-to-End CI/CD for Spring Boot with Jenkins, SonarQube, Docker, Kubernetes, and Argo CD
 
-![Screenshot 2023-03-28 at 9 38 09 PM](https://user-images.githubusercontent.com/43399466/228301952-abc02ca2-9942-4a67-8293-f76647b6f9d8.png)
+This project demonstrates a complete DevOps CI/CD workflow for a Java Spring Boot application.
 
+The Jenkins pipeline builds the application with Maven, runs SonarQube analysis, builds and pushes a Docker image to Docker Hub, updates the Kubernetes deployment manifest with the new image tag, and lets Argo CD deploy the updated application to Kubernetes.
 
-Here are the step-by-step details to set up an end-to-end Jenkins pipeline for a Java application using SonarQube, Argo CD, Helm, and Kubernetes:
+## Project Structure
 
-Prerequisites:
+```text
+java-maven-sonar-argocd-helm-k8s/
++-- Argo CD/
+|   +-- argocd-basic.yaml
++-- spring-boot-app/
+|   +-- Dockerfile
+|   +-- JenkinsAgent.Dockerfile
+|   +-- JenkinsFile
+|   +-- pom.xml
+|   +-- src/
++-- spring-boot-app-manifests/
+    +-- deployment.yml
+    +-- service.yml
+```
 
-   -  Java application code hosted on a Git repository
-   -  Jenkins server
-   -  Kubernetes cluster
-   -  Helm package manager
-   -  Argo CD
+## Tools Used
 
-Run locally:
+- **Jenkins**: CI/CD automation
+- **Maven**: Java build and test tool
+- **SonarQube**: Static code analysis
+- **Docker**: Container image build and push
+- **Docker Hub**: Container registry
+- **Kubernetes**: Application runtime platform
+- **Argo CD**: GitOps deployment controller
 
-   1. Using Maven:
-      ```powershell
-      cd spring-boot-app
-      mvn clean package
-      java -jar target/spring-boot-web.jar
-      ```
-      Then open: `http://localhost:8080/`
+## Current Images
 
-   2. Using Docker:
-      ```powershell
-      cd spring-boot-app
-      docker build -t spring-boot-app .
-      docker run --rm -p 8080:8080 spring-boot-app
-      ```
-      Then open: `http://localhost:8080/`
+Application image:
 
-      If the container is started without `-p 8080:8080`, stop it and restart with the port mapping.
+```text
+naveenreddy9/spring-boot-app:<BUILD_NUMBER>
+```
 
-Steps:
+Jenkins agent image:
 
-    1. Install the necessary Jenkins plugins:
-       1.1 Git plugin
-       1.2 Maven Integration plugin
-       1.3 Pipeline plugin
-       1.4 Kubernetes Continuous Deploy plugin
+```text
+naveenreddy9/maven-docker-java17-agent:v1
+```
 
-    2. Create a new Jenkins pipeline:
-       2.1 In Jenkins, create a new pipeline job and configure it with the Git repository URL for the Java application.
-       2.2 Add a Jenkinsfile to the Git repository to define the pipeline stages.
+The custom Jenkins agent image includes:
 
-    3. Define the pipeline stages:
-        Stage 1: Checkout the source code from Git.
-        Stage 2: Build the Java application using Maven.
-        Stage 3: Run unit tests using JUnit and Mockito.
-        Stage 4: Run SonarQube analysis to check the code quality.
-        Stage 5: Package the application into a JAR file.
-        Stage 6: Deploy the application to a test environment using Helm.
-        Stage 7: Run user acceptance tests on the deployed application.
-        Stage 8: Promote the application to a production environment using Argo CD.
+- Java 17
+- Maven 3.9.9
+- Docker CLI 29.5.3
 
-    4. Configure Jenkins pipeline stages:
-        Stage 1: Use the Git plugin to check out the source code from the Git repository.
-        Stage 2: Use the Maven Integration plugin to build the Java application.
-        Stage 3: Use the JUnit and Mockito plugins to run unit tests.
-        Stage 4: Use the SonarQube plugin to analyze the code quality of the Java application.
-        Stage 5: Use the Maven Integration plugin to package the application into a JAR file.
-        Stage 6: Use the Kubernetes Continuous Deploy plugin to deploy the application to a test environment using Helm.
-        Stage 7: Use a testing framework like Selenium to run user acceptance tests on the deployed application.
-        Stage 8: Use Argo CD to promote the application to a production environment.
+This avoids repeated installation of Java and Docker CLI during every pipeline run.
 
-    5. Set up Argo CD:
-        Install Argo CD on the Kubernetes cluster.
-        Set up a Git repository for Argo CD to track the changes in the Helm charts and Kubernetes manifests.
-        Create a Helm chart for the Java application that includes the Kubernetes manifests and Helm values.
-        Add the Helm chart to the Git repository that Argo CD is tracking.
+## Jenkins Pipeline Flow
 
-    6. Configure Jenkins pipeline to integrate with Argo CD:
-       6.1 Add the Argo CD API token to Jenkins credentials.
-       6.2 Update the Jenkins pipeline to include the Argo CD deployment stage.
+The pipeline is defined in:
 
-    7. Run the Jenkins pipeline:
-       7.1 Trigger the Jenkins pipeline to start the CI/CD process for the Java application.
-       7.2 Monitor the pipeline stages and fix any issues that arise.
+```text
+spring-boot-app/JenkinsFile
+```
 
-This end-to-end Jenkins pipeline will automate the entire CI/CD process for a Java application, from code checkout to production deployment, using popular tools like SonarQube, Argo CD, Helm, and Kubernetes.
+Pipeline stages:
+
+1. **Checkout**
+   - Clones the GitHub repository from the `main` branch.
+
+2. **Build and Test**
+   - Runs Maven package:
+
+   ```bash
+   mvn clean package
+   ```
+
+3. **Static Code Analysis**
+   - Runs SonarQube analysis with the pinned Maven Sonar plugin:
+
+   ```text
+   org.sonarsource.scanner.maven:sonar-maven-plugin:4.0.0.4121
+   ```
+
+4. **Build and Push Docker Image**
+   - Builds the Spring Boot Docker image.
+   - Tags it with the Jenkins build number.
+   - Pushes it to Docker Hub.
+
+5. **Update Deployment File**
+   - Updates `spring-boot-app-manifests/deployment.yml`.
+   - Replaces the image tag with the latest Jenkins build number.
+   - Commits and pushes the updated manifest back to GitHub.
+
+6. **Post Actions**
+   - Fixes workspace ownership after the Docker-based Jenkins agent exits.
+
+## Jenkins Credentials
+
+Create these credentials in Jenkins under:
+
+```text
+Manage Jenkins -> Credentials -> System -> Global credentials
+```
+
+### SonarQube Token
+
+```text
+ID: sonarqube
+Kind: Secret text
+Secret: SonarQube user token
+```
+
+Used by:
+
+```groovy
+withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')])
+```
+
+### Docker Hub Credentials
+
+```text
+ID: docker-cred
+Kind: Username with password
+Username: naveenreddy9
+Password: Docker Hub password or access token
+```
+
+Used by:
+
+```groovy
+docker.withRegistry('https://index.docker.io/v1/', "docker-cred")
+```
+
+### GitHub Token
+
+```text
+ID: github
+Kind: Secret text
+Secret: GitHub personal access token
+```
+
+The token must have permission to push to:
+
+```text
+VenkataNaveenReddyYaparla/Jenkins_E2E_CICD
+```
+
+For a classic GitHub token, enable the `repo` permission.
+
+## Custom Jenkins Agent Image
+
+The Jenkins pipeline uses this custom agent:
+
+```text
+naveenreddy9/maven-docker-java17-agent:v1
+```
+
+Its Dockerfile is:
+
+```text
+spring-boot-app/JenkinsAgent.Dockerfile
+```
+
+Build the agent image:
+
+```bash
+cd spring-boot-app
+docker build -f JenkinsAgent.Dockerfile -t naveenreddy9/maven-docker-java17-agent:v1 .
+```
+
+Push the agent image:
+
+```bash
+docker login
+docker push naveenreddy9/maven-docker-java17-agent:v1
+```
+
+Verify the image:
+
+```bash
+docker run --rm naveenreddy9/maven-docker-java17-agent:v1 sh -lc "java -version && mvn -v && docker --version"
+```
+
+## Run the Application Locally
+
+### Using Maven
+
+```bash
+cd spring-boot-app
+mvn clean package
+java -jar target/spring-boot-web.jar
+```
+
+Open:
+
+```text
+http://localhost:8080
+```
+
+### Using Docker
+
+```bash
+cd spring-boot-app
+docker build -t spring-boot-app .
+docker run --rm -p 8080:8080 spring-boot-app
+```
+
+Open:
+
+```text
+http://localhost:8080
+```
+
+## Kubernetes Deployment
+
+Kubernetes manifests are stored in:
+
+```text
+spring-boot-app-manifests/
+```
+
+Deployment:
+
+```text
+spring-boot-app-manifests/deployment.yml
+```
+
+Service:
+
+```text
+spring-boot-app-manifests/service.yml
+```
+
+The deployment uses the Docker image:
+
+```text
+naveenreddy9/spring-boot-app:<BUILD_NUMBER>
+```
+
+The service is a `NodePort` service that exposes the app on port `80` and forwards traffic to container port `8080`.
+
+Apply manually:
+
+```bash
+kubectl apply -f spring-boot-app-manifests/deployment.yml
+kubectl apply -f spring-boot-app-manifests/service.yml
+```
+
+Check resources:
+
+```bash
+kubectl get pods
+kubectl get svc
+```
+
+For local testing:
+
+```bash
+kubectl port-forward svc/spring-boot-app-service 8080:80
+```
+
+Open:
+
+```text
+http://localhost:8080
+```
+
+## Argo CD Setup
+
+Argo CD should track the Git repository that contains:
+
+```text
+spring-boot-app-manifests/
+```
+
+When Jenkins pushes a new image tag to `deployment.yml`, Argo CD detects the Git change and syncs the new deployment to Kubernetes.
+
+Example Argo CD application manifest:
+
+```text
+Argo CD/argocd-basic.yaml
+```
+
+Apply it:
+
+```bash
+kubectl apply -f "Argo CD/argocd-basic.yaml"
+```
+
+Check Argo CD application status:
+
+```bash
+kubectl get applications -n argocd
+```
+
+## SonarQube Notes
+
+The SonarQube scanner must run with Java 17.
+
+The custom Jenkins agent image already includes Java 17. This fixes errors like:
+
+```text
+UnsupportedClassVersionError
+class file version 61.0
+this version of the Java Runtime only recognizes class file versions up to 55.0
+```
+
+Meaning:
+
+```text
+class file version 61 = Java 17
+class file version 55 = Java 11
+```
+
+## Common Issues and Fixes
+
+### `ERROR: Could not find credentials entry with ID 'github'`
+
+Create a Jenkins credential:
+
+```text
+ID: github
+Kind: Secret text
+```
+
+Use a GitHub token with push permission.
+
+### `ERROR: docker-cred`
+
+Create Docker Hub credentials in Jenkins:
+
+```text
+ID: docker-cred
+Kind: Username with password
+```
+
+Make sure it is under **System -> Global credentials**.
+
+### `client version 1.41 is too old`
+
+The Docker CLI inside the Jenkins agent is too old for the Docker daemon.
+
+Fix: use the custom Jenkins agent image:
+
+```text
+naveenreddy9/maven-docker-java17-agent:v1
+```
+
+### `fatal: not in a git directory`
+
+The workspace is not a real Git checkout.
+
+Fix: make sure the Jenkins `Checkout` stage performs a real Git checkout:
+
+```groovy
+git branch: 'main', url: 'https://github.com/VenkataNaveenReddyYaparla/Jenkins_E2E_CICD.git'
+```
+
+### `detected dubious ownership`
+
+Add the Jenkins workspace as a safe Git directory:
+
+```bash
+git config --global --add safe.directory "$WORKSPACE"
+```
+
+This is already handled in the current Jenkinsfile.
+
+## Useful Commands
+
+Check Docker image:
+
+```bash
+docker images | grep spring-boot-app
+```
+
+Check pushed image:
+
+```bash
+docker pull naveenreddy9/spring-boot-app:<BUILD_NUMBER>
+```
+
+Check Kubernetes rollout:
+
+```bash
+kubectl rollout status deployment/spring-boot-app
+```
+
+Check pod logs:
+
+```bash
+kubectl logs -l app=spring-boot-app
+```
+
+Check Argo CD apps:
+
+```bash
+kubectl get applications -n argocd
+```
+
+## Final Workflow
+
+1. Developer pushes code to GitHub.
+2. Jenkins pipeline starts.
+3. Jenkins builds the Spring Boot application.
+4. Jenkins runs SonarQube analysis.
+5. Jenkins builds and pushes Docker image.
+6. Jenkins updates `deployment.yml` with the new image tag.
+7. Jenkins commits and pushes the manifest change.
+8. Argo CD detects the Git change.
+9. Argo CD syncs the new version to Kubernetes.
+10. Kubernetes runs the updated Spring Boot application.
