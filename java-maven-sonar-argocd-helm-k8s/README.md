@@ -1,9 +1,9 @@
-<img width="300" height="140" alt="jenkins_cicd_whiteboard_diagram" src="https://github.com/user-attachments/assets/d20876a3-dd68-46b1-803d-09dc49c87a67" /># End-to-End CI/CD for Spring Boot with Jenkins, SonarQube, Docker, Kubernetes, and Argo CD
+# End-to-End CI/CD for Spring Boot with Jenkins, SonarQube, Docker, Kubernetes, and Argo CD
 
 This project demonstrates a complete DevOps CI/CD workflow for a Java Spring Boot application.
 
 The Jenkins pipeline builds the application with Maven, runs SonarQube analysis, builds and pushes a Docker image to Docker Hub, updates the Kubernetes deployment manifest with the new image tag, and lets Argo CD deploy the updated application to Kubernetes.
-
+<img width="300" height="140" alt="jenkins_cicd_whiteboard_diagram" src="https://github.com/user-attachments/assets/d20876a3-dd68-46b1-803d-09dc49c87a67" />
 ## Project Structure
 
 ```text
