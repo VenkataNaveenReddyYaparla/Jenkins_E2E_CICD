@@ -63,9 +63,11 @@ pipeline {
                     git config --global user.name "Naveen Reddy"
                     git config --global --add safe.directory "$WORKSPACE"
                     git remote set-url origin "https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git"
-                git fetch origin
-                git checkout main
-                git pull --rebase origin main
+                    git fetch origin
+                    git checkout main
+                    git reset --hard
+                    git clean -fdx
+                    git pull --rebase origin main
 
                     BUILD_NUMBER=${BUILD_NUMBER}
                 sed -i "s|image: naveenreddy9/spring-boot-app:.*|image: naveenreddy9/spring-boot-app:${BUILD_NUMBER}|g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
