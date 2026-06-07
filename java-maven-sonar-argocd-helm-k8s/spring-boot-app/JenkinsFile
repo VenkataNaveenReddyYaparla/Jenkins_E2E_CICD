@@ -22,10 +22,23 @@ pipeline {
     stage('Static Code Analysis') {
       environment {
         SONAR_URL = "http://3.7.71.202:9000"
+        SONAR_MAVEN_PLUGIN = "org.sonarsource.scanner.maven:sonar-maven-plugin:4.0.0.4121:sonar"
       }
       steps {
         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-          sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
+          sh '''
+            if [ ! -x /usr/lib/jvm/java-17-openjdk-amd64/bin/java ]; then
+              apt-get update
+              apt-get install -y openjdk-17-jdk
+            fi
+
+            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+            export PATH="$JAVA_HOME/bin:$PATH"
+            java -version
+
+            cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+            mvn ${SONAR_MAVEN_PLUGIN} -Dsonar.token=${SONAR_AUTH_TOKEN} -Dsonar.host.url=${SONAR_URL}
+          '''
         }
       }
     }
