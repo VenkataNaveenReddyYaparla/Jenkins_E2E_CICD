@@ -5,10 +5,14 @@ pipeline {
       args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
     }
   }
+  options {
+    skipDefaultCheckout(true)
+  }
   stages {
     stage('Checkout') {
       steps {
-        sh 'echo passed'
+        deleteDir()
+        checkout scm
         //git branch: 'main', url: 'https://github.com/iam-veeramalla/Jenkins-Zero-To-Hero.git'
       }
     }
@@ -63,6 +67,14 @@ pipeline {
                 '''
             }
         }
+    }
+  }
+  post {
+    always {
+      sh '''
+        WORKSPACE_OWNER="$(stat -c '%u:%g' "$WORKSPACE")"
+        chown -R "$WORKSPACE_OWNER" "$WORKSPACE" || true
+      '''
     }
   }
 }
