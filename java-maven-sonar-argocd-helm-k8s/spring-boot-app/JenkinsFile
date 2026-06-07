@@ -5,11 +5,28 @@ pipeline {
       args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
     }
   }
+  environment {
+    JAVA_HOME = "/usr/lib/jvm/java-17-openjdk-amd64"
+    PATH = "${JAVA_HOME}/bin:${PATH}"
+  }
   stages {
     stage('Checkout') {
       steps {
         sh 'echo passed'
         //git branch: 'main', url: 'https://github.com/iam-veeramalla/Jenkins-Zero-To-Hero.git'
+      }
+    }
+    stage('Prepare Java 17') {
+      steps {
+        sh '''
+          if [ ! -x "$JAVA_HOME/bin/java" ]; then
+            apt-get update
+            apt-get install -y openjdk-17-jdk
+          fi
+
+          java -version
+          mvn -v
+        '''
       }
     }
     stage('Build and Test') {
@@ -27,14 +44,8 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
           sh '''
-            if [ ! -x /usr/lib/jvm/java-17-openjdk-amd64/bin/java ]; then
-              apt-get update
-              apt-get install -y openjdk-17-jdk
-            fi
-
-            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-            export PATH="$JAVA_HOME/bin:$PATH"
             java -version
+            mvn -v
 
             cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
             mvn ${SONAR_MAVEN_PLUGIN} -Dsonar.token=${SONAR_AUTH_TOKEN} -Dsonar.host.url=${SONAR_URL}
