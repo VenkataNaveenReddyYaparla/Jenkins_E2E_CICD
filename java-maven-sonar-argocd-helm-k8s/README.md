@@ -8,10 +8,30 @@ Here are the step-by-step details to set up an end-to-end Jenkins pipeline for a
 Prerequisites:
 
    -  Java application code hosted on a Git repository
-   -   Jenkins server
+   -  Jenkins server
    -  Kubernetes cluster
    -  Helm package manager
    -  Argo CD
+
+Run locally:
+
+   1. Using Maven:
+      ```powershell
+      cd spring-boot-app
+      mvn clean package
+      java -jar target/spring-boot-web.jar
+      ```
+      Then open: `http://localhost:8080/`
+
+   2. Using Docker:
+      ```powershell
+      cd spring-boot-app
+      docker build -t spring-boot-app .
+      docker run --rm -p 8080:8080 spring-boot-app
+      ```
+      Then open: `http://localhost:8080/`
+
+      If the container is started without `-p 8080:8080`, stop it and restart with the port mapping.
 
 Steps:
 
