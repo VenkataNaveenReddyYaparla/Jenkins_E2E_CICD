@@ -8,8 +8,7 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
-        sh 'echo passed'
-        //git branch: 'main', url: 'https://github.com/iam-veeramalla/Jenkins-Zero-To-Hero.git'
+        git branch: 'main', url: 'https://github.com/VenkataNaveenReddyYaparla/Jenkins_E2E_CICD.git'
       }
     }
     stage('Build and Test') {
@@ -64,7 +63,7 @@ pipeline {
                     BUILD_NUMBER=${BUILD_NUMBER}
                     sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
                     git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                    git diff --cached --quiet || git commit -m "Update deployment image to version ${BUILD_NUMBER}"
                     git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
                 '''
             }
